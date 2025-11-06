@@ -1,7 +1,7 @@
 const express = require('express'); //Node.jsでWebサーバーを立ち上げる 『サーバー』
 const bodyParser = require('body-parser'); //SmartsheetのWebhookが送ってくるデータはJSONだからこれを使ってreq.bodyで扱えるようにする　『リクエスト分解』
 const axios = require('axios'); //SmartsheetAPIにアクセスするときに使用　『外部APIアクセス』
-const { transposeDates } = require('./copy-data-columns.js'); // ← 別ファイルで作成した日付列コピー処理を読み込む　『処理モジュール読み込み』
+const { transposeDates } = require('./copy-date-columns.js'); // ← 別ファイルで作成した日付列コピー処理を読み込む　『処理モジュール読み込み』
 
 const app = express(); //Expressのアプリケーション本体を生成 appがWebサーバーそのもの
 app.use(bodyParser.json()); //すべてのリクエストに対してもしpakege.jsonが来たら自動でパース(データを解釈してプログラムが扱える形に変換)する設定。/webhookに届いたJSONがreq.bpdyですぐに使えすようにする
@@ -139,4 +139,5 @@ app.post('/webhook', async (req, res) => { //app.post('/webhook' POSTリクエ�
 
 const PORT = process.env.PORT || 3000; //ローカルで動かすときデフォルトで３０００番ポートを使う
 app.listen(PORT, () => console.log(`✅ Server listening on port ${PORT}`)); //クラウドで動かすときPORT変数を渡す
+
 
