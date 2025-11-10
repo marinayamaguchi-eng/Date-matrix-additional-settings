@@ -17,7 +17,7 @@ const MAX_COLUMNS_PER_REQUEST = 50;
 async function addColumns(sheetId, columns, count, headers,dates) { //この関数を呼ぶとシートにまとめて新し列を追加できる仕組み。(どのシートに追加するか 既にある列情報の配列　追加したい列の数 各省情報 列タイトルにつける日付)
    /* const added = []; //実際に追加できた列を記録する配列*/
     let remaining = count; //まだ追加すべき残りの配列数
-    const MAX_COLUMNS_PER_REQUEST = 50; //1リクエスト５０列まで
+    const MAX_COLUMNS_PER_REQUEST = 40; //1リクエスト40列まで(最大が50列だから）
 
     while(remaining>0){ //残りの列がまだあるなら繰り返し処理
                 const chunkSize = Math.min(remaining,MAX_COLUMNS_PER_REQUEST); //chunkSize一度に追加する列の数
@@ -35,11 +35,14 @@ async function addColumns(sheetId, columns, count, headers,dates) { //この関�
 
                 //dates配列の値があれば列タイトルに日付を入れる。なければ連番で命名するロジック
                 const newColumns = Array(chunkSize).fill(0).map((_, i) => { //chunkSize 回だけループして列オブジェクトを作成　Array(chunkSize)はchunkSizeの長さを持つからの配列をつくる。.fill(0)は空のままだと動かないから０を入れる　.map((_, i) => {...})で列ごとの処理を繰り返す
-                    const rawDate = dates[i]; //今作る列のタイトルに使う日付を取り出す
+                    const rawDate = dates[addedCount + i]; //今作る列のタイトルに使う日付を取り出す
                     let title;
                     if(rawDate){ //日付があるなら日付にする
                         const d = new Date(rawDate); //JavaScript の Date 型に変換
-                        title = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        title = `${y}/${m}/${day}`;
                     }else{
                         title = `列${startIndex + i + 1}`; //日付がなければ列１みたいに連番で命名
                     }
@@ -60,6 +63,8 @@ async function addColumns(sheetId, columns, count, headers,dates) { //この関�
                 /*added.push(...addColsResp.data.result); //新列だけ保持*/
                 columns.push(...addColsResp.data.result); //全リストも更新
                 remaining -= chunkSize;
+                addedCount += chunkSize; // ← 次のループでずらす
+                await new Promise(r => setTimeout(r, 500)); // 少し休ませる
             }
             return{/*addedColumns: added,*/ allColumns: columns }; //ddedColumns:新しく追加した列だけ allColumns:既存の列 + 新規列
         }
@@ -177,6 +182,8 @@ async function transposeDates() {
          console.log(`🗑 削除: ${col.title}`);
     }
 
+        await new Promise(resolve => setTimeout(resolve, 3000)); //削除直後のSmartsheet反映待ち
+
     //実際に削除が終わったらプログラム内で保持しているcolumns配列からも削除済みの列も消す（コード内ではまだ列があることになってるってズレが起きないようにするため）
     if(deleteTargets.length > 0){
         const deletedIds = new Set(deleteTargets.map(c => c.id)); //deleteTargetsの中にある列オブジェクトからidを取り出し削除した列のIDリストを作っておく
@@ -193,8 +200,13 @@ async function transposeDates() {
             return;
         }
 
+        console.log("📊 sortDateColumns 実行中 (ay 定義テスト)");
+
         //ⅱ.日付で昇順ソート
         const sortedCols = [...dateCols].sort((a, b) => { //[...] は配列のコピーを作成　aとbは配列の中から取り出された２つの要素。この二つの要素を比較して並び替える　sortは並び替えが完了したと判断された瞬間に終わる
+            console.log("🧩 a.title=", a.title, "b.title=", b.title);
+
+            const [ay, am, ad] = a.title.split('/').map(Number); 
             const [by,bm, bd] = b.title.split('/').map(Number);
             return new Date(ay, am - 1, ad) - new Date(by, bm - 1, bd); //年/月/日を数値化してDateにし、差分で前後を決める
         });
@@ -220,6 +232,8 @@ async function transposeDates() {
         {headers}
     );
 
+    await new Promise(resolve => setTimeout(resolve, 2000)); //日付列が安定するまで少し待つ
+
     //6.実績列にセル数式を入力(列数式はAPIで入れれない)
     //ⅰ.実績列を探す
     const actualCol = refreshed.data.columns.find(c => c.title === '実績');
@@ -232,10 +246,15 @@ async function transposeDates() {
     if (!actualCol || refreshedDateCols.length === 0) return; //実績列がない、日付列が一つもない状態なら処理を中断して終了
 
     //実績列に関数を設定
-    const sumFormula =
-     `=IF([行階層]@row = 0, 0, SUM([${refreshedDateCols[0].title}]@row:[${refreshedDateCols[refreshedDateCols.length - 1].title}]@row))`; //日付列の一番左の列０からいち一番右length - 1の範囲を指定
+    const escapeTitle = (title) => title.replace(/\//g, '\/').replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+    const firstTitle = escapeTitle(refreshedDateCols[0].title); //一番古い日付の列
+    const lastTitle  = escapeTitle(refreshedDateCols[refreshedDateCols.length - 1].title); //一番新しい日付の列を作成
 
-     /* APIで列数式は使えないためボツ
+    const sumFormula =`=IF([行階層]@row = 0, 0, SUM([${firstTitle}]@row:[${lastTitle}]@row))`; //数式
+
+    console.log("設定する数式:", sumFormula);
+
+    /* APIで列数式は使えないためボツ
    //列数式として更新
    await axios.put(
     `https://api.smartsheet.com/2.0/sheets/${TARGET_SHEET_ID}/columns/${actualCol.id}`,
@@ -366,3 +385,9 @@ module.exports = {transposeDates,syncDatesToInputSheet}; //server.js内でも関
 if(require.main === module){ //直接実行されるとこのファイルがメインのmoduleになる
     transposeDates();
 }
+
+
+
+
+
+
