@@ -128,6 +128,14 @@ async function transposeDates() {
             );
             columns = allColumns; //新しい列を含んだ最新のカラム一覧を更新する
             console.log('✅ 列追加完了');
+
+            //列追加が反映されるまで少し待機して再取得
+            await new Promise(resolve => setTimeout(resolve,3000));
+            const refreshedTarget = await axios.get(
+                `https://api.smartsheet.com/2.0/sheets/${TARGET_SHEET_ID}`,
+                { headers }
+                );
+            columns = refreshedTarget.data.columns; // ← 最新状態に更新
         }else{
             console.log("✅ 新しい日付列の追加は不要です"); //newDatesが全部すでに存在しているなら新しく追加しなくてよいからログだけ出す
         }
@@ -382,6 +390,7 @@ module.exports = {transposeDates,syncDatesToInputSheet}; //server.js内でも関
 if(require.main === module){ //直接実行されるとこのファイルがメインのmoduleになる
     transposeDates();
 }
+
 
 
 
