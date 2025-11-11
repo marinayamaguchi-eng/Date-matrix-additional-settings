@@ -116,7 +116,10 @@ async function transposeDates() {
         const existingTitles = columns.map(c => c.title); //列タイトルだけの配列を作成
         const formattedDates = dates.map(raw => { //元シートから拾ってきた日付を統一フォーマットに変換
             const d = new Date(raw);
-            return`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+           return `${y}/${m}/${day}`; 
         });
 
         const newDates = formattedDates.filter(title => !existingTitles.includes(title)); //新しく追加する日付列だけを取り出す
@@ -396,6 +399,7 @@ module.exports = {transposeDates,syncDatesToInputSheet}; //server.js内でも関
 if(require.main === module){ //直接実行されるとこのファイルがメインのmoduleになる
     transposeDates();
 }
+
 
 
 
