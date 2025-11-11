@@ -15,6 +15,7 @@ const headers = {
 const MAX_COLUMNS_PER_REQUEST = 50;
 
 async function addColumns(sheetId, columns, count, headers,dates) { //この関数を呼ぶとシートにまとめて新し列を追加できる仕組み。(どのシートに追加するか 既にある列情報の配列　追加したい列の数 各省情報 列タイトルにつける日付)
+    let addedCount = 0;
    /* const added = []; //実際に追加できた列を記録する配列*/
     let remaining = count; //まだ追加すべき残りの配列数
     const MAX_COLUMNS_PER_REQUEST = 40; //1リクエスト40列まで(最大が50列だから）
@@ -381,6 +382,7 @@ module.exports = {transposeDates,syncDatesToInputSheet}; //server.js内でも関
 if(require.main === module){ //直接実行されるとこのファイルがメインのmoduleになる
     transposeDates();
 }
+
 
 
 
