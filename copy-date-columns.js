@@ -179,7 +179,13 @@ async function transposeDates() {
 
     //4.ボタンがOFFの列の削除
     const existingDateCols = columns.filter(c => /^\d{4}\/\d{1,2}\/\d{1,2}$/.test(c.title));
-    const activeTitles = formattedDates; //ボタンONの行から拾った日付　残す列のタイトル
+    const activeTitles = formattedDates.map(raw =>{ //ボタンONの行から拾った日付　残す列のタイトル
+        const d = new Date(raw);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2,'0');
+        const day = String(d.getDate()).padStart(2,'0');
+        return `${y}/${m}/${day}`; //　yyyy/mm/dd形式にそろえる
+    });
 
     const deleteTargets = existingDateCols.filter(c => !activeTitles.includes(c.title)); //既存の日付列の中でactiveTitlesに入っていない列だけ抽出　ボタンOFFの削除対象の列
 
@@ -390,6 +396,7 @@ module.exports = {transposeDates,syncDatesToInputSheet}; //server.js内でも関
 if(require.main === module){ //直接実行されるとこのファイルがメインのmoduleになる
     transposeDates();
 }
+
 
 
 
